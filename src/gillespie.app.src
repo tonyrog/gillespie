@@ -1,5 +1,5 @@
 {application, gillespie,
- [{description, "Multip device flash tool"},
+ [{description, "Multi device LPC flash tool"},
   {vsn, git},
   {modules, ["@@MODULES@@"]},
   {registered, []},
