@@ -1,0 +1,8 @@
+{application, gillespie,
+ [{description, "Multip device flash tool"},
+  {vsn, git},
+  {modules, ["@@MODULES@@"]},
+  {registered, []},
+  {env, []},
+  {applications,[kernel,stdlib,uart,elpcisp]}
+  ]}.
