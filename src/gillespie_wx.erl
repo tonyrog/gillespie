@@ -65,7 +65,8 @@
 	 summary,
 	 log,
 	 workers = #{} :: #{integer() => {pid(), reference()}},
-	 started
+	 started,
+	 dref :: reference()
 	}).
 
 start() ->
@@ -79,6 +80,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 
 init([]) ->
+    {ok,DRef} = fnotify:watch("/dev"),
     wx:new(),
     Config = gillespie:config(),
     Frame = wxFrame:new(wx:null(), ?wxID_ANY, ?TITLE),
@@ -190,7 +192,7 @@ init([]) ->
 		     rows = Rows,
 		     scan_btn = ScanBtn, flash_btn = FlashBtn,
 		     abort_btn = AbortBtn, save_btn = SaveBtn,
-		     summary = Summary, log = Log },
+		     summary = Summary, log = Log, dref = DRef },
     State1 = update_file_size(State0),
     State2 = update_summary(State1),
     log(State2, "config file: ~s", [gillespie:config_file()]),
@@ -382,6 +384,10 @@ handle_event(_Event, State) ->
 handle_info({gillespie, No, Event}, State) ->
     {noreply, row_event(No, Event, State)};
 
+handle_info(rescan, State) ->
+    flush(rescan),
+    {noreply, rescan(State)};
+
 handle_info({'DOWN', Mon, process, Pid, Reason}, State) ->
     Workers = maps:filter(fun(_No, {P, M}) -> {P, M} =/= {Pid, Mon} end,
 			  State#state.workers),
@@ -401,6 +407,28 @@ handle_info({'DOWN', Mon, process, Pid, Reason}, State) ->
 	_ -> {noreply, update_summary(State2)}
     end;
 
+handle_info(_F={fevent,Ref,[create],_Path,_Name="tty"++_}, State) 
+  when Ref =:= State#state.dref ->
+    %% io:format("CREATE path=~s, name=~s\n", [_Path, _Name]),
+    SELF = self(),
+    %% add a small delay to allow operting system to settle
+    spawn(fun() -> timer:sleep(500), SELF ! rescan end),
+    {noreply, State};
+handle_info(_F={fevent,Ref,[delete],_Path,_Name="tty"++_}, State) 
+  when Ref =:= State#state.dref ->
+    %% io:format("DELETE path=~s, name=~s\n", [_Path, _Name]),
+    SELF = self(),
+    %% add a small delay to allow operting system to settle
+    spawn(fun() -> timer:sleep(500), SELF ! rescan end),
+    {noreply, State};
+
+handle_info(_F={fevent,Ref,_Ev,_Path,_Name}, State) 
+  when Ref =:= State#state.dref ->
+    %% io:format("IGNORE FEVENT ~p path=~s, name=~s\n", [_Ev, _Path, _Name]),
+    {noreply, State};
+
+    
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -418,6 +446,15 @@ terminate(_Reason, State) ->
 		 State#state.workers),
     wx:destroy(),
     ok.
+
+%% flush rescan events
+
+flush(Msg) ->
+    receive
+	Msg -> flush(Msg)
+    after 500 ->
+	    ok
+    end.
 
 %%--------------------------------------------------------------------
 %% flash control

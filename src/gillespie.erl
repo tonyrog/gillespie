@@ -327,6 +327,7 @@ flash_device(DevNo, Device, Filename, Opts, Report) ->
 	    put(control_inv, maps:get(control_inv, Opts, false)),
 	    put(control_swap, maps:get(control_swap, Opts, false)),
 	    put(written, 0),
+	    put(silent, silent),
 	    Cb = fun(_NextAddr) ->
 			 N = get(written) + SegmentSize,
 			 put(written, N),
