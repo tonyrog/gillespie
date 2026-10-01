@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Gillespie
+Exec=/home/USER/erlang/gillespie/priv/gillespie.sh
+Icon=/home/USER/erlang/gillespie/priv/gillespie.png
+Terminal=false
